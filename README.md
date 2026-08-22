@@ -1,4 +1,4 @@
-# OMG Print Landing V3
+# OMG Print Landing V4
 
 Cambios:
 - Rediseño inspirado en la interfaz visual de OMG POS.
