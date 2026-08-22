@@ -1,45 +1,46 @@
-# OMG Print Landing
+# OMG Print Landing V3
 
-Landing page estática lista para desplegar en `print.omaigad.com.mx`.
+Cambios:
+- Rediseño inspirado en la interfaz visual de OMG POS.
+- Integrados los 3 videos de YouTube.
+- Favicon OMG! incluido.
+- Eliminada la frase sobre testimonios inventados.
+- Eliminado el texto “OBJECIONES REALES”.
+- Formulario obligatorio: nombre, código de país con +, teléfono de 10 dígitos y email.
+- Envío por email a Orlandohsanchez@gmail.com usando FormSubmit.
+- Pantalla de éxito “Socio Fundador”.
+- Botones de YouTube, TikTok, Facebook e Instagram preparados.
 
-## Archivos
-- `index.html`: estructura completa
-- `styles.css`: diseño responsive
-- `script.js`: formulario + salida a WhatsApp
+IMPORTANTE: FormSubmit puede enviar un correo de activación la primera vez. Debes confirmarlo una sola vez en Orlandohsanchez@gmail.com.
 
-## Antes de publicar
-1. WhatsApp ya configurado: +52 981 175 5666.
-2. Los tres espacios de video incluyen el guion de grabación. Cuando estén listos, reemplaza cada bloque por el video correspondiente.
-3. Cuando tengas testimonios beta reales, sustituye los placeholders.
-4. Supabase se conectará en una etapa posterior.
-5. Si quieres cobrar una reserva, conecta el CTA final con Shopify Checkout, Mercado Pago o Stripe.
+Para redes sociales, edita SOCIAL_LINKS en script.js.
 
-## Despliegue automático recomendado
+Para publicar: reemplaza index.html, styles.css y script.js en GitHub y agrega favicon.svg. Haz commit en main; Vercel actualizará print.omaigad.com.mx automáticamente.
 
-### Opción A — Vercel
-1. Crea un repositorio GitHub con estos archivos.
-2. Importa el repo en Vercel.
-3. Configura el dominio `print.omaigad.com.mx`.
-4. En el DNS de tu dominio agrega el registro que Vercel indique.
-5. Cada `git push` actualizará la web automáticamente.
+Los videos ya están embebidos; si todavía están programados/privados pueden aparecer como no disponibles hasta su publicación, pero no necesitarás editar la web cuando se hagan públicos.
 
-### Opción B — Netlify
-Mismo flujo: GitHub → Netlify → dominio personalizado → deploy automático.
 
-## Dominio
-Recomendado:
-`print.omaigad.com.mx`
+## V4 — Supabase + redes sociales
+- Formulario conectado a `public.omg_print_leads` en el proyecto Supabase Omaigad.
+- Supabase es ahora el registro principal de leads.
+- El email a Orlandohsanchez@gmail.com queda como notificación secundaria.
+- Se guardan automáticamente:
+  - estado = Nuevo
+  - origen
+  - utm_source
+  - utm_medium
+  - utm_campaign
+  - URL de la página
+- Redes configuradas:
+  - YouTube: https://www.youtube.com/@OmaigadMx
+  - TikTok: https://www.tiktok.com/@omaigad.mx
+  - Facebook: https://www.facebook.com/share/1JZktjbHcK/?mibextid=wwXIfr
+  - Instagram: https://www.instagram.com/omaigadmx/
 
-La tienda principal puede seguir en:
-`www.omaigad.com.mx`
-
-## Próxima integración
-Para que la landing no dependa de WhatsApp como almacenamiento:
-- Guardar leads en Supabase.
-- Enviar notificación automática.
-- Crear pipeline: Nuevo → Contactado → Demo → Fundador → No apto.
-- Añadir analítica de conversión y eventos de TikTok Pixel/Meta Pixel.
-
-## Nota
-La urgencia de “10 imprentas” debe mantenerse real. Cuando se llenen los lugares,
-cambia la página a lista de espera.
+## Prueba recomendada
+Después de publicar:
+1. Llena el formulario tú mismo.
+2. Confirma que aparece la pantalla de felicitación.
+3. Revisa en Supabase > Table Editor > omg_print_leads.
+4. Revisa el correo de Orlando.
+5. Si FormSubmit manda un correo de activación, confírmalo una sola vez.
