@@ -23,8 +23,12 @@ function updateCountdown() {
   countdown.minutes.textContent = twoDigits(minutes);
   countdown.seconds.textContent = twoDigits(seconds);
 
-  if (remaining === 0) clearInterval(timer);
+  return remaining;
 }
 
-updateCountdown();
-const timer = setInterval(updateCountdown, 1000);
+const remaining = updateCountdown();
+if (remaining > 0) {
+  const timer = setInterval(() => {
+    if (updateCountdown() === 0) clearInterval(timer);
+  }, 1000);
+}
