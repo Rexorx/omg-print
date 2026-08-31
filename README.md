@@ -1,46 +1,27 @@
-# OMG Print Landing V3
+# OMG Print Landing
 
-Cambios:
-- Rediseño inspirado en la interfaz visual de OMG POS.
-- Integrados los 3 videos de YouTube.
-- Favicon OMG! incluido.
-- Eliminada la frase sobre testimonios inventados.
-- Eliminado el texto “OBJECIONES REALES”.
-- Formulario obligatorio: nombre, código de país con +, teléfono de 10 dígitos y email.
-- Envío por email a Orlandohsanchez@gmail.com usando FormSubmit.
-- Pantalla de éxito “Socio Fundador”.
-- Botones de YouTube, TikTok, Facebook e Instagram preparados.
+Landing pública de OMG Print, desplegada automáticamente en Vercel:
 
-IMPORTANTE: FormSubmit puede enviar un correo de activación la primera vez. Debes confirmarlo una sola vez en Orlandohsanchez@gmail.com.
+- https://print.omaigad.com.mx
+- https://omg-print.vercel.app
 
-Para redes sociales, edita SOCIAL_LINKS en script.js.
+## Lanzamiento de Socios Fundadores
 
-Para publicar: reemplaza index.html, styles.css y script.js en GitHub y agrega favicon.svg. Haz commit en main; Vercel actualizará print.omaigad.com.mx automáticamente.
+La página presenta el producto y dirige la contratación a:
 
-Los videos ya están embebidos; si todavía están programados/privados pueden aparecer como no disponibles hasta su publicación, pero no necesitarás editar la web cuando se hagan públicos.
+- https://socios.omaigad.com.mx
 
+Incluye:
 
-## V4 — Supabase + redes sociales
-- Formulario conectado a `public.omg_print_leads` en el proyecto Supabase Omaigad.
-- Supabase es ahora el registro principal de leads.
-- El email a Orlandohsanchez@gmail.com queda como notificación secundaria.
-- Se guardan automáticamente:
-  - estado = Nuevo
-  - origen
-  - utm_source
-  - utm_medium
-  - utm_campaign
-  - URL de la página
-- Redes configuradas:
-  - YouTube: https://www.youtube.com/@OmaigadMx
-  - TikTok: https://www.tiktok.com/@omaigad.mx
-  - Facebook: https://www.facebook.com/share/1JZktjbHcK/?mibextid=wwXIfr
-  - Instagram: https://www.instagram.com/omaigadmx/
+- Los tres videos de presentación y demostración.
+- Comparativa, funciones disponibles y preguntas frecuentes.
+- Banner de lanzamiento con cuenta regresiva.
+- Fecha límite: 1 de septiembre de 2026 a las 05:30:30 UTC (31 de agosto, 11:30 p. m. en Campeche).
+- CTA directo a la página de Socios Fundadores.
+- Favicon oficial unificado de OMG Print.
 
-## Prueba recomendada
-Después de publicar:
-1. Llena el formulario tú mismo.
-2. Confirma que aparece la pantalla de felicitación.
-3. Revisa en Supabase > Table Editor > omg_print_leads.
-4. Revisa el correo de Orlando.
-5. Si FormSubmit manda un correo de activación, confírmalo una sola vez.
+El formulario anterior y sus conexiones de captura fueron retirados.
+
+## Publicación
+
+Los cambios en `main` se despliegan automáticamente en Vercel.
