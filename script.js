@@ -133,6 +133,7 @@ if (remaining > 0) {
 
 const ENTERPRISE_SUPABASE_URL = "https://ejbdozhbnfekhckaskbg.supabase.co";
 const ENTERPRISE_SUPABASE_KEY = "sb_publishable_oEQcwx--eNG0wUEamzO6pQ_5dxcK4qo";
+const ENTERPRISE_EMAIL_ENDPOINT = "https://formsubmit.co/ajax/Orlandohsanchez@gmail.com";
 const enterpriseModal = document.getElementById("enterpriseModal");
 const enterpriseForm = document.getElementById("enterpriseForm");
 const enterpriseSuccess = document.getElementById("enterpriseSuccess");
@@ -244,9 +245,23 @@ async function submitEnterpriseForm() {
       body: JSON.stringify(payload)
     });
     if (!response.ok) throw new Error(`No fue posible registrar la solicitud (${response.status})`);
+    const emailResponse = await fetch(ENTERPRISE_EMAIL_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        ...payload,
+        telefono: `${payload.codigo_pais} ${payload.telefono}`,
+        pagina: window.location.href,
+        _subject: `Nueva solicitud Enterprise — ${payload.empresa}`,
+        _template: "table",
+        _captcha: "false"
+      })
+    });
+    if (!emailResponse.ok) throw new Error(`No fue posible enviar el aviso (${emailResponse.status})`);
     enterpriseForm.hidden = true;
     enterpriseSuccess.hidden = false;
-  } catch {
+  } catch (error) {
+    console.error("Error al enviar solicitud Enterprise:", error);
     enterpriseError.textContent = "No pudimos enviar tu solicitud. Inténtalo de nuevo en unos minutos.";
     enterpriseSubmit.disabled = false;
     enterpriseSubmit.textContent = "Solicitar propuesta Enterprise →";
