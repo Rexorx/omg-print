@@ -130,3 +130,109 @@ if (remaining > 0) {
     if (updateCountdown() === 0) window.clearInterval(timer);
   }, 1000);
 }
+
+const ENTERPRISE_SUPABASE_URL = "https://ejbdozhbnfekhckaskbg.supabase.co";
+const ENTERPRISE_SUPABASE_KEY = "sb_publishable_oEQcwx--eNG0wUEamzO6pQ_5dxcK4qo";
+const enterpriseModal = document.getElementById("enterpriseModal");
+const enterpriseForm = document.getElementById("enterpriseForm");
+const enterpriseSuccess = document.getElementById("enterpriseSuccess");
+const enterpriseError = document.getElementById("enterpriseError");
+const enterpriseSteps = [...document.querySelectorAll(".enterprise-step")];
+const enterpriseProgress = [...document.querySelectorAll(".enterprise-progress span")];
+const enterpriseBack = document.getElementById("enterpriseBack");
+const enterpriseNext = document.getElementById("enterpriseNext");
+const enterpriseSubmit = document.getElementById("enterpriseSubmit");
+let enterpriseStep = 1;
+
+function setEnterpriseStep(step) {
+  enterpriseStep = step;
+  enterpriseSteps.forEach((element) => element.classList.toggle("active", Number(element.dataset.step) === step));
+  enterpriseProgress.forEach((element, index) => element.classList.toggle("active", index < step));
+  enterpriseBack.hidden = step === 1;
+  enterpriseBack.parentElement.classList.toggle("final", step === enterpriseSteps.length);
+  enterpriseError.textContent = "";
+}
+
+function openEnterpriseForm() {
+  enterpriseModal.classList.add("open");
+  enterpriseModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("enterprise-open");
+  window.setTimeout(() => enterpriseForm.elements.nombre.focus(), 100);
+}
+
+function closeEnterpriseForm() {
+  enterpriseModal.classList.remove("open");
+  enterpriseModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("enterprise-open");
+}
+
+function stepIsValid(step) {
+  const currentStep = enterpriseSteps.find((element) => Number(element.dataset.step) === step);
+  const requiredInputs = [...currentStep.querySelectorAll("[required]")];
+  const firstInvalid = requiredInputs.find((input) => !input.checkValidity());
+  if (firstInvalid) {
+    firstInvalid.reportValidity();
+    return false;
+  }
+  if (step === 3 && !currentStep.querySelector("input[name='necesidades']:checked")) {
+    enterpriseError.textContent = "Selecciona al menos una necesidad de tu operación.";
+    return false;
+  }
+  return true;
+}
+
+document.getElementById("openEnterpriseForm")?.addEventListener("click", openEnterpriseForm);
+document.querySelectorAll("[data-close-enterprise]").forEach((button) => button.addEventListener("click", closeEnterpriseForm));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && enterpriseModal?.classList.contains("open")) closeEnterpriseForm();
+});
+
+document.getElementById("enterpriseCountry")?.addEventListener("change", (event) => {
+  const option = event.target.options[event.target.selectedIndex];
+  document.getElementById("enterpriseCountryCode").value = option.dataset.code || "";
+});
+
+enterpriseNext?.addEventListener("click", () => {
+  if (stepIsValid(enterpriseStep)) setEnterpriseStep(Math.min(enterpriseSteps.length, enterpriseStep + 1));
+});
+enterpriseBack?.addEventListener("click", () => setEnterpriseStep(Math.max(1, enterpriseStep - 1)));
+
+enterpriseForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!stepIsValid(enterpriseStep)) return;
+  const data = new FormData(enterpriseForm);
+  const phone = String(data.get("telefono") || "").replace(/\D/g, "");
+  const countryCode = String(data.get("codigo_pais") || "").replace(/\D/g, "");
+  const integrations = String(data.get("integraciones_texto") || "").split(",").map((item) => item.trim()).filter(Boolean);
+  const url = new URL(window.location.href);
+  const payload = {
+    nombre: String(data.get("nombre")).trim(), empresa: String(data.get("empresa")).trim(), pais: String(data.get("pais")),
+    codigo_pais: `+${countryCode}`, telefono: phone, email: String(data.get("email")).trim().toLowerCase(),
+    usuarios: Number(data.get("usuarios")), sucursales: Number(data.get("sucursales")), pedidos_mensuales: String(data.get("pedidos_mensuales")),
+    necesidades: data.getAll("necesidades"), integraciones, detalle: String(data.get("detalle")).trim(),
+    inicio: String(data.get("inicio")), inversion: String(data.get("inversion") || "") || null,
+    consentimiento_email: data.get("consentimiento_email") === "on", consentimiento_whatsapp: data.get("consentimiento_whatsapp") === "on",
+    acepta_aviso_privacidad: data.get("acepta_aviso_privacidad") === "on", utm_source: url.searchParams.get("utm_source"),
+    utm_medium: url.searchParams.get("utm_medium"), utm_campaign: url.searchParams.get("utm_campaign")
+  };
+  if (!/^\+[0-9]{1,4}$/.test(payload.codigo_pais) || !/^[0-9]{7,15}$/.test(payload.telefono)) {
+    enterpriseError.textContent = "Revisa el código de país y tu número de WhatsApp.";
+    return;
+  }
+  enterpriseSubmit.disabled = true;
+  enterpriseSubmit.textContent = "Enviando solicitud…";
+  enterpriseError.textContent = "";
+  try {
+    const response = await fetch(`${ENTERPRISE_SUPABASE_URL}/rest/v1/omg_print_enterprise_leads`, {
+      method: "POST", headers: { apikey: ENTERPRISE_SUPABASE_KEY, Authorization: `Bearer ${ENTERPRISE_SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error("No fue posible registrar la solicitud");
+    enterpriseForm.hidden = true;
+    enterpriseSuccess.hidden = false;
+  } catch {
+    enterpriseError.textContent = "No pudimos enviar tu solicitud. Inténtalo de nuevo en unos minutos.";
+    enterpriseSubmit.disabled = false;
+    enterpriseSubmit.textContent = "Solicitar propuesta Enterprise →";
+  }
+});
