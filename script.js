@@ -133,7 +133,6 @@ if (remaining > 0) {
 
 const ENTERPRISE_SUPABASE_URL = "https://ejbdozhbnfekhckaskbg.supabase.co";
 const ENTERPRISE_SUPABASE_KEY = "sb_publishable_oEQcwx--eNG0wUEamzO6pQ_5dxcK4qo";
-const ENTERPRISE_EMAIL_ENDPOINT = "https://formsubmit.co/ajax/Orlandohsanchez@gmail.com";
 const enterpriseModal = document.getElementById("enterpriseModal");
 const enterpriseForm = document.getElementById("enterpriseForm");
 const enterpriseSuccess = document.getElementById("enterpriseSuccess");
@@ -225,70 +224,3 @@ enterpriseNext?.addEventListener("click", () => {
   if (stepIsValid(enterpriseStep)) setEnterpriseStep(Math.min(enterpriseSteps.length, enterpriseStep + 1));
 });
 enterpriseBack?.addEventListener("click", () => setEnterpriseStep(Math.max(1, enterpriseStep - 1)));
-
-async function submitEnterpriseForm() {
-  if (!stepIsValid(enterpriseStep)) return;
-  const data = new FormData(enterpriseForm);
-  const phone = String(data.get("telefono") || "").replace(/\D/g, "");
-  const countryCode = String(data.get("codigo_pais") || "").replace(/\D/g, "");
-  const integrations = String(data.get("integraciones_texto") || "").split(",").map((item) => item.trim()).filter(Boolean);
-  const url = new URL(window.location.href);
-  const payload = {
-    nombre: String(data.get("nombre")).trim(), empresa: String(data.get("empresa")).trim(), pais: String(data.get("pais")) === "Otro" ? String(data.get("pais_otro")).trim() : String(data.get("pais")),
-    codigo_pais: `+${countryCode}`, telefono: phone, email: String(data.get("email")).trim().toLowerCase(),
-    usuarios: String(data.get("usuarios")) === "Otro" ? null : Number(data.get("usuarios")), usuarios_otro: String(data.get("usuarios_otro") || "") || null,
-    sucursales: String(data.get("sucursales")) === "Otro" ? null : Number(data.get("sucursales")), sucursales_otro: String(data.get("sucursales_otro") || "") || null,
-    pedidos_mensuales: String(data.get("pedidos_mensuales")) === "Otro" ? "Otro" : String(data.get("pedidos_mensuales")), pedidos_mensuales_otro: String(data.get("pedidos_mensuales_otro") || "") || null,
-    necesidades: data.getAll("necesidades"), necesidades_otras: String(data.get("necesidades_otras") || "") || null, integraciones, detalle: String(data.get("detalle")).trim(),
-    inicio: String(data.get("inicio")) === "Otro" ? "Otro" : String(data.get("inicio")), inicio_otro: String(data.get("inicio_otro") || "") || null,
-    inversion: String(data.get("inversion")) === "Otro" ? "Otro" : String(data.get("inversion") || "") || null, inversion_otro: String(data.get("inversion_otro") || "") || null,
-    consentimiento_email: data.get("consentimiento_email") === "on", consentimiento_whatsapp: data.get("consentimiento_whatsapp") === "on",
-    acepta_aviso_privacidad: data.get("acepta_aviso_privacidad") === "on", utm_source: url.searchParams.get("utm_source"),
-    utm_medium: url.searchParams.get("utm_medium"), utm_campaign: url.searchParams.get("utm_campaign")
-  };
-  if (!/^\+[0-9]{1,4}$/.test(payload.codigo_pais) || !/^[0-9]{7,15}$/.test(payload.telefono)) {
-    enterpriseError.textContent = "Revisa el código de país y tu número de WhatsApp.";
-    return;
-  }
-  enterpriseSubmit.disabled = true;
-  enterpriseSubmit.textContent = "Enviando solicitud…";
-  enterpriseError.textContent = "";
-  try {
-    const response = await fetch(`${ENTERPRISE_SUPABASE_URL}/rest/v1/omg_print_enterprise_leads`, {
-      method: "POST", headers: { apikey: ENTERPRISE_SUPABASE_KEY, Authorization: `Bearer ${ENTERPRISE_SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
-      body: JSON.stringify(payload)
-    });
-    if (!response.ok) throw new Error(`No fue posible registrar la solicitud (${response.status})`);
-    sendEnterpriseEmail(payload);
-    enterpriseForm.hidden = true;
-    enterpriseSuccess.hidden = false;
-  } catch (error) {
-    console.error("Error al enviar solicitud Enterprise:", error);
-    enterpriseError.textContent = "No pudimos enviar tu solicitud. Inténtalo de nuevo en unos minutos.";
-    enterpriseSubmit.disabled = false;
-    enterpriseSubmit.textContent = "Solicitar propuesta Enterprise →";
-  }
-}
-
-async function sendEnterpriseEmail(payload) {
-  try {
-    const emailResponse = await fetch(ENTERPRISE_EMAIL_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({
-        ...payload,
-        telefono: `${payload.codigo_pais} ${payload.telefono}`,
-        pagina: window.location.href,
-        _subject: `Nueva solicitud Enterprise — ${payload.empresa}`,
-        _template: "table",
-        _captcha: "false"
-      })
-    });
-    if (!emailResponse.ok) throw new Error(`FormSubmit ${emailResponse.status}`);
-  } catch (error) {
-    console.error("No fue posible enviar el aviso Enterprise por correo:", error);
-  }
-}
-
-enterpriseForm?.addEventListener("submit", (event) => { event.preventDefault(); submitEnterpriseForm(); });
-enterpriseSubmit?.addEventListener("click", submitEnterpriseForm);

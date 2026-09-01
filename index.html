@@ -37,7 +37,11 @@
       <p>Cuéntanos lo esencial. Te contactaremos con una propuesta de implementación a la medida.</p>
       <div class="enterprise-progress" aria-label="Progreso del formulario"><span class="active"></span><span></span><span></span><span></span></div>
     </div>
-    <form id="enterpriseForm" novalidate>
+    <form id="enterpriseForm" action="https://formsubmit.co/Orlandohsanchez@gmail.com" method="POST">
+      <input type="hidden" name="_subject" value="Nueva solicitud — OMG Print Enterprise">
+      <input type="hidden" name="_template" value="table">
+      <input type="hidden" name="_captcha" value="false">
+      <input type="hidden" name="_next" value="https://print.omaigad.com.mx/enterprise-gracias.html">
       <fieldset class="enterprise-step active" data-step="1">
         <legend>1. Tu negocio</legend>
         <div class="enterprise-grid">
@@ -82,7 +86,7 @@
         <label class="consent"><input type="checkbox" name="consentimiento_email"> Sí, deseo recibir por correo novedades y promociones de OMG Print. Puedo cancelar en cualquier momento.</label>
         <label class="consent"><input type="checkbox" name="consentimiento_whatsapp"> Sí, autorizo a Omaigad y OMG Print a enviarme por WhatsApp información, novedades, promociones y recordatorios relacionados con OMG Print. Puedo retirar mi consentimiento respondiendo BAJA.</label>
       </fieldset>
-      <div class="enterprise-actions"><button class="btn ghost" type="button" id="enterpriseBack">← Atrás</button><button class="btn darkbtn" type="button" id="enterpriseNext">Continuar →</button><button class="btn darkbtn" type="button" id="enterpriseSubmit">Solicitar propuesta Enterprise →</button></div>
+      <div class="enterprise-actions"><button class="btn ghost" type="button" id="enterpriseBack">← Atrás</button><button class="btn darkbtn" type="button" id="enterpriseNext">Continuar →</button><button class="btn darkbtn" type="submit" id="enterpriseSubmit">Solicitar propuesta Enterprise →</button></div>
       <p id="enterpriseError" class="form-error" role="alert"></p>
     </form>
     <div class="enterprise-success" id="enterpriseSuccess" hidden><div class="success-check">✓</div><h2>Solicitud recibida.</h2><p>Analizaremos la operación de tu imprenta y te contactaremos para preparar una propuesta Enterprise a tu medida.</p><button class="btn darkbtn" type="button" data-close-enterprise>Volver a la página</button></div>
