@@ -192,13 +192,26 @@ document.getElementById("enterpriseCountry")?.addEventListener("change", (event)
   document.getElementById("enterpriseCountryCode").value = option.dataset.code || "";
 });
 
+function toggleCustomField(field, show) {
+  const customField = enterpriseForm.querySelector(`[data-custom-for="${field}"]`);
+  if (!customField) return;
+  customField.classList.toggle("visible", show);
+  const input = customField.querySelector("input, textarea");
+  input.required = show;
+  if (!show) input.value = "";
+}
+
+["pais", "usuarios", "sucursales", "pedidos_mensuales", "inicio", "inversion"].forEach((field) => {
+  enterpriseForm.elements[field]?.addEventListener("change", (event) => toggleCustomField(field, event.target.value === "Otro"));
+});
+document.getElementById("otraNecesidad")?.addEventListener("change", (event) => toggleCustomField("otra_necesidad", event.target.checked));
+
 enterpriseNext?.addEventListener("click", () => {
   if (stepIsValid(enterpriseStep)) setEnterpriseStep(Math.min(enterpriseSteps.length, enterpriseStep + 1));
 });
 enterpriseBack?.addEventListener("click", () => setEnterpriseStep(Math.max(1, enterpriseStep - 1)));
 
-enterpriseForm?.addEventListener("submit", async (event) => {
-  event.preventDefault();
+async function submitEnterpriseForm() {
   if (!stepIsValid(enterpriseStep)) return;
   const data = new FormData(enterpriseForm);
   const phone = String(data.get("telefono") || "").replace(/\D/g, "");
@@ -206,11 +219,14 @@ enterpriseForm?.addEventListener("submit", async (event) => {
   const integrations = String(data.get("integraciones_texto") || "").split(",").map((item) => item.trim()).filter(Boolean);
   const url = new URL(window.location.href);
   const payload = {
-    nombre: String(data.get("nombre")).trim(), empresa: String(data.get("empresa")).trim(), pais: String(data.get("pais")),
+    nombre: String(data.get("nombre")).trim(), empresa: String(data.get("empresa")).trim(), pais: String(data.get("pais")) === "Otro" ? String(data.get("pais_otro")).trim() : String(data.get("pais")),
     codigo_pais: `+${countryCode}`, telefono: phone, email: String(data.get("email")).trim().toLowerCase(),
-    usuarios: Number(data.get("usuarios")), sucursales: Number(data.get("sucursales")), pedidos_mensuales: String(data.get("pedidos_mensuales")),
-    necesidades: data.getAll("necesidades"), integraciones, detalle: String(data.get("detalle")).trim(),
-    inicio: String(data.get("inicio")), inversion: String(data.get("inversion") || "") || null,
+    usuarios: String(data.get("usuarios")) === "Otro" ? null : Number(data.get("usuarios")), usuarios_otro: String(data.get("usuarios_otro") || "") || null,
+    sucursales: String(data.get("sucursales")) === "Otro" ? null : Number(data.get("sucursales")), sucursales_otro: String(data.get("sucursales_otro") || "") || null,
+    pedidos_mensuales: String(data.get("pedidos_mensuales")) === "Otro" ? "Otro" : String(data.get("pedidos_mensuales")), pedidos_mensuales_otro: String(data.get("pedidos_mensuales_otro") || "") || null,
+    necesidades: data.getAll("necesidades"), necesidades_otras: String(data.get("necesidades_otras") || "") || null, integraciones, detalle: String(data.get("detalle")).trim(),
+    inicio: String(data.get("inicio")) === "Otro" ? "Otro" : String(data.get("inicio")), inicio_otro: String(data.get("inicio_otro") || "") || null,
+    inversion: String(data.get("inversion")) === "Otro" ? "Otro" : String(data.get("inversion") || "") || null, inversion_otro: String(data.get("inversion_otro") || "") || null,
     consentimiento_email: data.get("consentimiento_email") === "on", consentimiento_whatsapp: data.get("consentimiento_whatsapp") === "on",
     acepta_aviso_privacidad: data.get("acepta_aviso_privacidad") === "on", utm_source: url.searchParams.get("utm_source"),
     utm_medium: url.searchParams.get("utm_medium"), utm_campaign: url.searchParams.get("utm_campaign")
@@ -227,7 +243,7 @@ enterpriseForm?.addEventListener("submit", async (event) => {
       method: "POST", headers: { apikey: ENTERPRISE_SUPABASE_KEY, Authorization: `Bearer ${ENTERPRISE_SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify(payload)
     });
-    if (!response.ok) throw new Error("No fue posible registrar la solicitud");
+    if (!response.ok) throw new Error(`No fue posible registrar la solicitud (${response.status})`);
     enterpriseForm.hidden = true;
     enterpriseSuccess.hidden = false;
   } catch {
@@ -235,4 +251,7 @@ enterpriseForm?.addEventListener("submit", async (event) => {
     enterpriseSubmit.disabled = false;
     enterpriseSubmit.textContent = "Solicitar propuesta Enterprise →";
   }
-});
+}
+
+enterpriseForm?.addEventListener("submit", (event) => { event.preventDefault(); submitEnterpriseForm(); });
+enterpriseSubmit?.addEventListener("click", submitEnterpriseForm);
