@@ -201,6 +201,10 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && enterpriseModal?.classList.contains("open")) closeEnterpriseForm();
 });
 
+if (new URL(window.location.href).searchParams.get("enterprise") === "1") {
+  openEnterpriseForm();
+}
+
 document.getElementById("enterpriseCountry")?.addEventListener("change", (event) => {
   const option = event.target.options[event.target.selectedIndex];
   document.getElementById("enterpriseCountryCode").value = option.dataset.code || "";
