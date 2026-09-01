@@ -172,6 +172,20 @@ function stepIsValid(step) {
   const requiredInputs = [...currentStep.querySelectorAll("[required]")];
   const firstInvalid = requiredInputs.find((input) => !input.checkValidity());
   if (firstInvalid) {
+    const messages = {
+      inicio: "Selecciona cuándo te gustaría iniciar para poder preparar tu propuesta.",
+      acepta_aviso_privacidad: "Para enviar tu solicitud, acepta el Aviso de Privacidad.",
+      nombre: "Completa tu nombre para continuar.",
+      empresa: "Completa el nombre de tu imprenta para continuar.",
+      telefono: "Completa tu número de WhatsApp para continuar.",
+      email: "Completa un correo válido para continuar.",
+      usuarios: "Selecciona cuántas cuentas necesitas.",
+      sucursales: "Selecciona cuántas sucursales operas.",
+      pedidos_mensuales: "Selecciona el volumen aproximado de pedidos.",
+      detalle: "Cuéntanos brevemente qué quieres mejorar."
+    };
+    enterpriseError.textContent = messages[firstInvalid.name] || "Completa los campos obligatorios marcados antes de continuar.";
+    firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
     firstInvalid.reportValidity();
     return false;
   }
@@ -245,6 +259,19 @@ async function submitEnterpriseForm() {
       body: JSON.stringify(payload)
     });
     if (!response.ok) throw new Error(`No fue posible registrar la solicitud (${response.status})`);
+    sendEnterpriseEmail(payload);
+    enterpriseForm.hidden = true;
+    enterpriseSuccess.hidden = false;
+  } catch (error) {
+    console.error("Error al enviar solicitud Enterprise:", error);
+    enterpriseError.textContent = "No pudimos enviar tu solicitud. Inténtalo de nuevo en unos minutos.";
+    enterpriseSubmit.disabled = false;
+    enterpriseSubmit.textContent = "Solicitar propuesta Enterprise →";
+  }
+}
+
+async function sendEnterpriseEmail(payload) {
+  try {
     const emailResponse = await fetch(ENTERPRISE_EMAIL_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -257,14 +284,9 @@ async function submitEnterpriseForm() {
         _captcha: "false"
       })
     });
-    if (!emailResponse.ok) throw new Error(`No fue posible enviar el aviso (${emailResponse.status})`);
-    enterpriseForm.hidden = true;
-    enterpriseSuccess.hidden = false;
+    if (!emailResponse.ok) throw new Error(`FormSubmit ${emailResponse.status}`);
   } catch (error) {
-    console.error("Error al enviar solicitud Enterprise:", error);
-    enterpriseError.textContent = "No pudimos enviar tu solicitud. Inténtalo de nuevo en unos minutos.";
-    enterpriseSubmit.disabled = false;
-    enterpriseSubmit.textContent = "Solicitar propuesta Enterprise →";
+    console.error("No fue posible enviar el aviso Enterprise por correo:", error);
   }
 }
 
