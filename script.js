@@ -1,4 +1,4 @@
-const DEADLINE = new Date("2026-09-01T05:30:30Z").getTime();
+const DEADLINE = new Date("2026-09-07T05:59:59Z").getTime();
 const IMPLEMENTATION_VARIANT_ID = "gid://shopify/ProductVariant/55106552693035";
 
 const PLANS = {
