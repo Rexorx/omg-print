@@ -14,7 +14,7 @@ Incluye:
 - Los tres videos de presentación y demostración.
 - Comparativa, funciones disponibles y preguntas frecuentes.
 - Banner de lanzamiento con cuenta regresiva.
-- Fecha límite: 1 de septiembre de 2026 a las 05:30:30 UTC (31 de agosto, 11:30 p. m. en Campeche).
+- Oferta vigente durante todo el 1 de octubre de 2026 en America/Mexico_City. Corte exclusivo: 2 de octubre de 2026 a las 06:00:00 UTC.
 - Cuatro planes por tamaño de equipo y modalidad de pago.
 - Carrito de Shopify con implementación, licencia, suscripción y descuentos de lanzamiento.
 - Favicon oficial unificado de OMG Print.
