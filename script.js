@@ -177,7 +177,7 @@ function validateInitialCart(cart, planId, promotional) {
   moneyCents(cart.cost?.totalAmount);
   let checkout;
   try { checkout = new URL(cart.checkoutUrl); } catch { throw new Error('Shopify no devolvió una dirección de pago válida.'); }
-  if (checkout.protocol !== 'https:' || !['a2f321-5.myshopify.com', 'www.omaigad.com.mx', 'omaigad.com.mx', 'checkout.shopify.com'].includes(checkout.hostname)) {
+  if (checkout.protocol !== 'https:' || !['a2f321-5.myshopify.com', 'www.omaigad.com.mx', 'omaigad.com.mx', 'tienda.omaigad.com.mx', 'checkout.shopify.com'].includes(checkout.hostname)) {
     throw new Error('La dirección de pago no pertenece a la tienda esperada.');
   }
   return cart;
