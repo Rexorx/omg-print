@@ -38,12 +38,12 @@ function fixture() {
       calls.push({ url, options, request });
       const normal = () => {
         if (!request.query.startsWith('mutation')) return { data: { cart: structuredClone(carts.get(request.variables.id)) } };
-        const input = request.variables.input, promo = input.discountCodes.length > 0;
+        const input = request.variables.input;
         const money = (amount) => ({ amount: amount.toFixed(2), currencyCode: 'MXN' });
         const prices = input.lines.map((line) => {
-          if (line.merchandiseId === setupId) return promo ? 2500 : 4500;
+          if (line.merchandiseId === setupId) return 4500;
           const plan = Object.keys(api.PLANS).find((id) => api.PLANS[id].variantId === line.merchandiseId);
-          return promo ? api.CHECKOUT_OFFERS[plan].promo : api.CHECKOUT_OFFERS[plan].regular;
+          return { 'basic-monthly': 499, 'basic-annual': 4990, 'team-monthly': 899, 'team-annual': 8990 }[plan];
         });
         const subtotal = prices.reduce((a, b) => a + b, 0);
         const cart = {
@@ -84,19 +84,20 @@ test('visible recovery CTA, FAQ and review option use established variant and no
   assert.match(fs.readFileSync(new URL('../styles.css', import.meta.url), 'utf8'), /dl>div\[hidden\]\{display:none\}/);
 });
 
-test('recovery creates one non-recurring implementation and only its discount; no personal data', async () => {
+test('recovery creates one non-recurring implementation with no discount or personal data', async () => {
   const f = fixture(); await f.setupButton.handlers.click();
   assert.equal(f.mutations().length, 1); assert.equal(f.calls.length, 2);
   const input = f.mutations()[0].request.variables.input;
   assert.deepEqual(input.lines, [{ merchandiseId: setupId, quantity: 1 }]);
-  assert.deepEqual(input.discountCodes, ['BETAFOUNDER']);
+  assert.deepEqual(input.discountCodes, []);
   assert.deepEqual(input.buyerIdentity, { countryCode: 'MX' });
   assert.ok(f.calls.every((c) => c.options.credentials === 'omit' && !c.options.headers.Authorization));
   assert.equal(f.element('checkoutSummary').open, true);
   assert.equal(f.element('checkoutLicenseRow').hidden, true);
   assert.equal(f.element('checkoutLicense').textContent, '');
   assert.match(f.element('checkoutTerms').textContent, /No se agrega otra licencia/);
-  assert.match(f.element('checkoutSubtotal').textContent, /2,500/);
+  assert.match(f.element('checkoutSubtotal').textContent, /4,500/);
+  assert.match(f.element('checkoutSetup').textContent, /4,500/);
 });
 
 test('switching between complete and complementary purchase restores the appropriate summary', async () => {
@@ -104,7 +105,7 @@ test('switching between complete and complementary purchase restores the appropr
   assert.equal(f.element('checkoutLicenseRow').hidden, true);
   await f.openPlanCart('basic-monthly');
   assert.equal(f.element('checkoutLicenseRow').hidden, false);
-  assert.match(f.element('checkoutLicense').textContent, /299/);
+  assert.match(f.element('checkoutLicense').textContent, /499/);
   assert.match(f.element('checkoutTerms').textContent, /Tu licencia se renueva/);
   assert.equal(f.mutations().length, 2);
 });
@@ -124,7 +125,7 @@ test('continue rereads the one-line cart before opening its confirmed checkout',
   assert.deepEqual(f.navigations, ['https://www.omaigad.com.mx/checkouts/synthetic']);
 });
 
-for (const kind of ['license-extra', 'license-instead', 'recurrence', 'quantity', 'price', 'discount', 'extra-discount', 'subtotal']) {
+for (const kind of ['license-extra', 'license-instead', 'recurrence', 'quantity', 'price', 'discount', 'missing-discounts', 'subtotal']) {
   test(`complementary checkout rejects ${kind}`, async () => {
     const f = fixture();
     f.setBehavior(async (_request, normal) => {
@@ -134,9 +135,9 @@ for (const kind of ['license-extra', 'license-instead', 'recurrence', 'quantity'
       if (kind === 'license-instead') line.merchandise.id = f.PLANS['basic-monthly'].variantId;
       if (kind === 'recurrence') line.sellingPlanAllocation = { sellingPlan: { id: f.PLANS['basic-monthly'].sellingPlanId } };
       if (kind === 'quantity') line.quantity = 2;
-      if (kind === 'price') line.cost.totalAmount.amount = '4500.00';
-      if (kind === 'discount') cart.discountCodes[0].applicable = false;
-      if (kind === 'extra-discount') cart.discountCodes.push({ code: 'BETA6MENSUAL', applicable: true });
+      if (kind === 'price') line.cost.totalAmount.amount = '2500.00';
+      if (kind === 'discount') cart.discountCodes.push({ code: 'EXCLUSIVE', applicable: true });
+      if (kind === 'missing-discounts') delete cart.discountCodes;
       if (kind === 'subtotal') cart.cost.subtotalAmount.amount = '1.00';
       return { ok: true, json: async () => data };
     });
@@ -162,10 +163,11 @@ test('regular complementary cart uses existing regular price and no promotional 
   assert.match(f.element('checkoutSubtotal').textContent, /4,500/);
 });
 
-test('expiration after recovery summary blocks checkout until a new selection', async () => {
-  const f = fixture(); await f.openPlanCart('implementation-only'); f.setNow('2026-10-02T06:00:00Z');
+test('a discount added after recovery summary blocks checkout without recreating the cart', async () => {
+  const f = fixture(); await f.openPlanCart('implementation-only');
+  [...f.carts.values()][0].discountCodes.push({ code: 'EXCLUSIVE', applicable: true });
   await f.element('continueCheckout').handlers.click();
-  assert.match(f.element('checkoutSummaryError').textContent, /vigencia/);
+  assert.ok(f.element('checkoutSummaryError').textContent);
   assert.equal(f.navigations.length, 0); assert.equal(f.mutations().length, 1);
 });
 

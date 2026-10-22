@@ -22,8 +22,8 @@ function fixture() {
       const request=JSON.parse(options.body);calls.push({url,options,request});
       const response=()=>{
         if(request.query.startsWith('mutation')){
-          const input=request.variables.input, p=plans.find(id=>api.PLANS[id].variantId===input.lines[1].merchandiseId), promo=input.discountCodes.length>0;
-          const prices=[promo?2500:4500,promo?api.CHECKOUT_OFFERS[p].promo:api.CHECKOUT_OFFERS[p].regular];
+          const input=request.variables.input, p=plans.find(id=>api.PLANS[id].variantId===input.lines[1].merchandiseId);
+          const prices=[4500,{'basic-monthly':499,'basic-annual':4990,'team-monthly':899,'team-annual':8990}[p]];
           const money=amount=>({amount:amount.toFixed(2),currencyCode:'MXN'});
           const cart={id:`synthetic-${carts.size+1}`,checkoutUrl:'https://www.omaigad.com.mx/checkouts/synthetic',discountCodes:input.discountCodes.map(code=>({code,applicable:true})),cost:{subtotalAmount:money(prices[0]+prices[1]),totalAmount:money((prices[0]+prices[1])*1.16)},lines:{nodes:input.lines.map((line,i)=>({__typename:'CartLine',id:`line-${i}`,quantity:line.quantity,merchandise:{id:line.merchandiseId},sellingPlanAllocation:line.sellingPlanId?{sellingPlan:{id:line.sellingPlanId}}:null,cost:{totalAmount:money(prices[i])}})),pageInfo:{hasNextPage:false}}};
           carts.set(cart.id,cart);return {data:{cartCreate:{cart:structuredClone(cart),userErrors:[],warnings:[]}}};
@@ -44,7 +44,16 @@ for(const plan of plans)test(`${plan}: creates two lines together, validates pri
   assert.equal(f.mutations().length,1);assert.equal(f.calls.length,2);assert.equal(f.element('checkoutSummary').open,true);
   const input=f.mutations()[0].request.variables.input;
   assert.equal(input.lines.length,2);assert.equal(input.lines[0].sellingPlanId,undefined);assert.equal(input.lines[1].sellingPlanId,f.PLANS[plan].sellingPlanId);
-  assert.deepEqual(input.discountCodes,[...f.CHECKOUT_OFFERS[plan].codes]);
+  assert.deepEqual(input.discountCodes,[]);
+  assert.equal(input.lines[0].quantity,1);assert.equal(input.lines[1].quantity,1);
+  assert.equal(input.lines[0].merchandiseId,'gid://shopify/ProductVariant/55106552693035');
+  assert.deepEqual(input.buyerIdentity,{countryCode:'MX'});
+  const price={'basic-monthly':499,'basic-annual':4990,'team-monthly':899,'team-annual':8990}[plan];
+  assert.equal([...f.carts.values()][0].cost.subtotalAmount.amount,(4500+price).toFixed(2));
+  assert.match(f.element('checkoutSetup').textContent,/4,500/);
+  assert.match(f.element('checkoutTerms').textContent,/una sola vez/);
+  assert.match(f.element('checkoutTerms').textContent,/modalidad elegida/);
+  assert.match(f.element('checkoutTerms').textContent,/impuestos/);
   assert.ok(f.calls.every(c=>c.options.credentials==='omit'&&!c.options.headers.Authorization));
 });
 test('double click and repeat opening reuse one cart, all plan buttons are protected',async()=>{
@@ -69,8 +78,8 @@ for(const kind of ['selling-plan','variant','quantity','recurring-setup','extra'
     if(kind==='recurring-setup')c.lines.nodes[0].sellingPlanAllocation={sellingPlan:{id:'wrong'}};
     if(kind==='extra')c.lines.nodes.push(c.lines.nodes[0]);
     if(kind==='missing-setup')c.lines.nodes.shift();if(kind==='missing-license')c.lines.nodes.pop();
-    if(kind==='price')c.lines.nodes[0].cost.totalAmount.amount='4500.00';
-    if(kind==='discount')c.discountCodes[0].applicable=false;
+    if(kind==='price')c.lines.nodes[0].cost.totalAmount.amount='2500.00';
+    if(kind==='discount')c.discountCodes.push({code:'UNEXPECTED',applicable:true});
     if(kind==='subtotal')c.cost.subtotalAmount.amount='1.00';
     if(kind==='currency')c.cost.totalAmount.currencyCode='USD';
     if(kind==='pagination')c.lines.pageInfo.hasNextPage=true;
@@ -87,9 +96,9 @@ test('uncertain create timeout never automatically repeats a mutation, even for 
   const f=fixture();f.setBehavior(()=>new Promise(()=>{}));const pending=f.openPlanCart('basic-monthly'), rejected=assert.rejects(pending);
   await flush();f.tick();await rejected;await assert.rejects(f.openPlanCart('team-annual'),/intento anterior/);assert.equal(f.mutations().length,1);
 });
-test('inactive launch discount has a specific visible explanation and preserves the confirmed cart',async()=>{
+test('unexpected discount warning blocks checkout and preserves the confirmed cart',async()=>{
   const f=fixture();f.setBehavior(async(_req,normal)=>{const data=normal();data.data.cartCreate.warnings=[{code:'DISCOUNT_CURRENTLY_INACTIVE'}];return{ok:true,json:async()=>data};});
-  await f.buttons[0].handlers.click();assert.match(f.element('checkoutError').textContent,/descuento de lanzamiento no está activo en Shopify/);
+  await f.buttons[0].handlers.click();assert.match(f.element('checkoutError').textContent,/descuento no disponible/);
   assert.equal(f.element('checkoutSummary').open,false);assert.equal(f.navigations.length,0);assert.equal(f.confirmedCarts.size,1);
   f.setBehavior(null);await f.openPlanCart('basic-monthly');assert.equal(f.mutations().length,1);
 });
@@ -97,11 +106,21 @@ test('a read failure retries only the confirmed cart, never creates another one'
   const f=fixture();f.setBehavior(async(req,normal)=>{if(req.query.startsWith('query'))throw new Error('read unavailable');return{ok:true,json:async()=>normal()};});
   await assert.rejects(f.openPlanCart('basic-monthly'));f.setBehavior(null);await f.openPlanCart('basic-monthly');assert.equal(f.mutations().length,1);
 });
-test('regular offer uses unchanged regular prices with no launch discounts',async()=>{
-  const f=fixture();f.setNow('2026-10-02T06:00:00Z');await f.openPlanCart('team-annual');assert.deepEqual(f.mutations()[0].request.variables.input.discountCodes,[]);
+for(const instant of ['2026-09-27T18:00:00Z','2026-10-22T01:00:00Z','2030-01-01T00:00:00Z'])test(`regular prices and no discounts regardless of browser date ${instant}`,async()=>{
+  const f=fixture();f.setNow(instant);await f.openPlanCart('team-annual');assert.deepEqual(f.mutations()[0].request.variables.input.discountCodes,[]);
   assert.match(f.element('checkoutSetup').textContent,/4,500/);assert.match(f.element('checkoutLicense').textContent,/8,990/);
 });
-test('offer expiration while summary is open blocks the old promotional checkout',async()=>{
-  const f=fixture();await f.openPlanCart('basic-monthly');f.setNow('2026-10-02T06:00:00Z');await f.element('continueCheckout').handlers.click();
-  assert.equal(f.navigations.length,0);assert.match(f.element('checkoutSummaryError').textContent,/vigencia/);
+
+test('clock changes do not change regular pricing or create another cart',async()=>{
+  const f=fixture();await f.openPlanCart('basic-monthly');f.setNow('2030-01-01T00:00:00Z');await f.element('continueCheckout').handlers.click();
+  assert.equal(f.navigations.length,1);await f.openPlanCart('basic-monthly');assert.equal(f.mutations().length,1);
+});
+
+for(const kind of ['discount','setup-price','license-price'])test(`${kind} changed after summary blocks the final redirect`,async()=>{
+  const f=fixture();await f.openPlanCart('basic-monthly');const cart=[...f.carts.values()][0];
+  if(kind==='discount')cart.discountCodes.push({code:'EXCLUSIVE',applicable:true});
+  if(kind==='setup-price')cart.lines.nodes[0].cost.totalAmount.amount='2500.00';
+  if(kind==='license-price')cart.lines.nodes[1].cost.totalAmount.amount='299.00';
+  await f.element('continueCheckout').handlers.click();
+  assert.equal(f.navigations.length,0);assert.ok(f.element('checkoutSummaryError').textContent);assert.equal(f.mutations().length,1);
 });

@@ -1,5 +1,3 @@
-// Exclusive end: October 1, 2026 remains valid through 23:59:59.999 in Mexico City.
-const DEADLINE = new Date("2026-10-02T06:00:00Z").getTime();
 const IMPLEMENTATION_VARIANT_ID = "gid://shopify/ProductVariant/55106552693035";
 
 const PLANS = {
@@ -21,58 +19,6 @@ const PLANS = {
   }
 };
 
-const countdown = {
-  days: document.getElementById("countDays"),
-  hours: document.getElementById("countHours"),
-  minutes: document.getElementById("countMinutes"),
-  seconds: document.getElementById("countSeconds")
-};
-
-function twoDigits(value) {
-  return String(value).padStart(2, "0");
-}
-
-function markOfferExpired() {
-  document.body.classList.add("offer-expired");
-  document.getElementById("launchMessage").textContent = "La oferta de lanzamiento finalizó. Consulta los planes vigentes:";
-  document.getElementById("setupCurrent").textContent = document.getElementById("setupRegular").textContent;
-  document.getElementById("setupRegular").hidden = true;
-
-  document.querySelectorAll("shopify-cart").forEach((cart) => cart.removeAttribute("discount-codes"));
-  document.querySelectorAll("[data-regular-text]").forEach((element) => {
-    element.textContent = element.dataset.regularText;
-  });
-  document.querySelectorAll(".plan-card").forEach((card) => {
-    const regularPrice = card.querySelector(".plan-price s");
-    const currentPrice = card.querySelector("[data-promo-price]");
-    const regularTotal = card.querySelector(".plan-total s");
-    const currentTotal = card.querySelector("[data-promo-total]");
-    const note = card.querySelector(".plan-note");
-
-    currentPrice.textContent = regularPrice.textContent;
-    currentTotal.textContent = `${regularTotal.textContent} + IVA`;
-    regularPrice.hidden = true;
-    regularTotal.hidden = true;
-    note.textContent = "Precio regular vigente. Sin contrato forzoso.";
-  });
-}
-
-function updateCountdown() {
-  const remaining = Math.max(0, DEADLINE - Date.now());
-  const days = Math.floor(remaining / 86400000);
-  const hours = Math.floor((remaining % 86400000) / 3600000);
-  const minutes = Math.floor((remaining % 3600000) / 60000);
-  const seconds = Math.floor((remaining % 60000) / 1000);
-
-  countdown.days.textContent = twoDigits(days);
-  countdown.hours.textContent = twoDigits(hours);
-  countdown.minutes.textContent = twoDigits(minutes);
-  countdown.seconds.textContent = twoDigits(seconds);
-
-  if (remaining === 0) markOfferExpired();
-  return remaining;
-}
-
 const CART_TIMEOUT_MS = 15000;
 const CART_FIELDS = `id checkoutUrl
   discountCodes { code applicable }
@@ -91,23 +37,23 @@ const CART_CREATE = `mutation OmgPrintInitialCart($input: CartInput!) {
   cartCreate(input: $input) { cart { ${CART_FIELDS} } userErrors { code } warnings { code } }
 }`;
 const CHECKOUT_OFFERS = {
-  'basic-monthly': { label: 'Equipo 1–5 · Mensual', regular: 499, promo: 299, codes: ['BETAFOUNDER', 'BETA6MENSUAL'] },
-  'basic-annual': { label: 'Equipo 1–5 · Anual', regular: 4990, promo: 2990, codes: ['BETAFOUNDER', 'BETA6ANUAL'] },
-  'team-monthly': { label: 'Equipo 6–10 · Mensual', regular: 899, promo: 499, codes: ['BETAFOUNDER', 'BETA10MENSUAL'] },
-  'team-annual': { label: 'Equipo 6–10 · Anual', regular: 8990, promo: 4990, codes: ['BETAFOUNDER', 'BETA10ANUAL'] }
+  'basic-monthly': { label: 'Equipo 1–5 · Mensual', regular: 499 },
+  'basic-annual': { label: 'Equipo 1–5 · Anual', regular: 4990 },
+  'team-monthly': { label: 'Equipo 6–10 · Mensual', regular: 899 },
+  'team-annual': { label: 'Equipo 6–10 · Anual', regular: 8990 }
 };
 
-function cartSelection(planId, promotional) {
-  const setup = { variantId: IMPLEMENTATION_VARIANT_ID, sellingPlanId: null, cents: (promotional ? 2500 : 4500) * 100 };
+function cartSelection(planId) {
+  const setup = { variantId: IMPLEMENTATION_VARIANT_ID, sellingPlanId: null, cents: 4500 * 100 };
   if (planId === 'implementation-only') {
-    return { label: 'Completar sólo implementación', expected: [setup], codes: promotional ? ['BETAFOUNDER'] : [] };
+    return { label: 'Completar sólo implementación', expected: [setup], codes: [] };
   }
   const plan = PLANS[planId], offer = CHECKOUT_OFFERS[planId];
   if (!plan || !offer) throw new Error('Plan no encontrado');
   return {
     label: offer.label,
-    expected: [setup, { ...plan, cents: (promotional ? offer.promo : offer.regular) * 100 }],
-    codes: promotional ? offer.codes : []
+    expected: [setup, { ...plan, cents: offer.regular * 100 }],
+    codes: []
   };
 }
 const confirmedCarts = new Map();
@@ -148,8 +94,8 @@ function moneyCents(money) {
   return cents;
 }
 
-function validateInitialCart(cart, planId, promotional) {
-  const { expected, codes } = cartSelection(planId, promotional);
+function validateInitialCart(cart, planId) {
+  const { expected, codes } = cartSelection(planId);
   if (!cart?.id || !Array.isArray(cart.lines?.nodes) || cart.lines.pageInfo?.hasNextPage !== false || cart.lines.nodes.length !== expected.length) {
     throw new Error(planId === 'implementation-only'
       ? 'El carrito debe incluir sólo una implementación, sin otra licencia. No se abrió el pago.'
@@ -184,23 +130,20 @@ function validateInitialCart(cart, planId, promotional) {
 }
 
 async function rereadCart(state) {
-  if (state.promotional !== (Date.now() < DEADLINE)) {
-    throw new Error('La vigencia de la oferta cambió. Cierra este resumen y vuelve a seleccionar tu plan.');
-  }
   const result = await storefrontRequest(CART_QUERY, { id: state.id });
   if (result.errors?.length || result.data?.cart?.id !== state.id) {
     throw new Error('No pudimos volver a verificar el carrito. No se abrió el pago.');
   }
-  return validateInitialCart(result.data.cart, state.planId, state.promotional);
+  return validateInitialCart(result.data.cart, state.planId);
 }
 
 function showCheckoutSummary(state, cart) {
   const dialog = document.getElementById('checkoutSummary');
   const setupOnly = state.planId === 'implementation-only';
-  document.getElementById('checkoutPlan').textContent = cartSelection(state.planId, state.promotional).label;
-  document.getElementById('checkoutSetup').textContent = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(state.promotional ? 2500 : 4500);
+  document.getElementById('checkoutPlan').textContent = cartSelection(state.planId).label;
+  document.getElementById('checkoutSetup').textContent = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(4500);
   document.getElementById('checkoutLicenseRow').hidden = setupOnly;
-  document.getElementById('checkoutLicense').textContent = setupOnly ? '' : new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(state.promotional ? CHECKOUT_OFFERS[state.planId].promo : CHECKOUT_OFFERS[state.planId].regular);
+  document.getElementById('checkoutLicense').textContent = setupOnly ? '' : new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(CHECKOUT_OFFERS[state.planId].regular);
   document.getElementById('checkoutTerms').textContent = setupOnly
     ? 'Pago único de implementación. No se agrega otra licencia. Usa el mismo correo y la misma cuenta de Shopify de tu compra anterior. Si ya pagaste ambos conceptos, no sabes qué falta o tu compra anterior tuvo problemas de activación, solicita revisión antes de pagar. Shopify confirma los impuestos y el total final.'
     : 'La implementación se paga una sola vez. Tu licencia se renueva según la modalidad elegida. Shopify confirma los impuestos y el total final antes de pagar.';
@@ -212,9 +155,8 @@ function showCheckoutSummary(state, cart) {
 
 async function preparePlanCart(planId) {
   if (uncertainCartCreation) throw new Error('El intento anterior no quedó confirmado. No lo repetimos automáticamente para evitar otro carrito. No se inició ningún pago.');
-  const promotional = Date.now() < DEADLINE;
-  const selection = cartSelection(planId, promotional);
-  const key = `${planId}:${promotional}`;
+  const selection = cartSelection(planId);
+  const key = planId;
   let state = confirmedCarts.get(key);
   if (!state) {
     let response;
@@ -233,7 +175,7 @@ async function preparePlanCart(planId) {
     }
     const payload = response.data?.cartCreate;
     if (payload?.cart?.id) {
-      state = { id: payload.cart.id, planId, promotional };
+      state = { id: payload.cart.id, planId };
       confirmedCarts.set(key, state);
     }
     if (response.errors?.length || !payload) {
@@ -241,12 +183,12 @@ async function preparePlanCart(planId) {
       throw new Error('Shopify no confirmó la preparación del carrito. No se abrió el pago.');
     }
     if (payload.warnings?.some((item) => item.code === 'DISCOUNT_CURRENTLY_INACTIVE')) {
-      throw new Error('El descuento de lanzamiento no está activo en Shopify. No se abrió el pago; contáctanos para revisar la oferta.');
+      throw new Error('Shopify reportó un descuento no disponible. No se abrió el pago; contáctanos para revisar el carrito.');
     }
     if (payload.userErrors?.length || payload.warnings?.length || !state) {
       throw new Error('Shopify no pudo preparar los productos solicitados. No se abrió el pago.');
     }
-    validateInitialCart(payload.cart, planId, promotional);
+    validateInitialCart(payload.cart, planId);
   }
   showCheckoutSummary(state, await rereadCart(state));
 }
@@ -293,13 +235,6 @@ document.querySelectorAll("[data-plan]").forEach((button) => {
     }
   });
 });
-
-const remaining = updateCountdown();
-if (remaining > 0) {
-  const timer = window.setInterval(() => {
-    if (updateCountdown() === 0) window.clearInterval(timer);
-  }, 1000);
-}
 
 const ENTERPRISE_SUPABASE_URL = "https://ejbdozhbnfekhckaskbg.supabase.co";
 const ENTERPRISE_SUPABASE_KEY = "sb_publishable_oEQcwx--eNG0wUEamzO6pQ_5dxcK4qo";
